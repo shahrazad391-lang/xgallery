@@ -79,7 +79,6 @@
 
   <div class="max-w-7xl mx-auto py-8 px-8 relative">
 
-    <!-- المعرض -->
     <div id="gallery" class="gallery-container mx-auto"></div>
 
     <!-- العنوان ونافذة الإضافة تحت الصور -->
@@ -105,9 +104,13 @@
 
   </div>
 
+  <!-- صوت الريح -->
+  <audio id="windSound" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-18.mp3" preload="auto"></audio>
+
   <script>
     const gallery = document.getElementById('gallery');
     const input = document.getElementById('mediaUrl');
+    const windSound = document.getElementById('windSound');
 
     const backgrounds = [
       "https://i.postimg.cc/zDdkCHDw/grok-image-9mfqxn.jpg",
@@ -134,7 +137,7 @@
       return url;
     }
 
-    function renderGallery() {
+    function renderGallery(finalLayout = false) {
       gallery.innerHTML = '';
       mediaList.forEach((url, index) => {
         const cleanUrl = extractImageUrl(url);
@@ -142,14 +145,19 @@
         item.className = 'frame';
         item.dataset.index = index;
 
-        const left = 10 + Math.random() * 78;
-        const top = 8 + Math.random() * 68;
-        const rotate = Math.random() * 12 - 6;
-
-        item.style.left = `${left}%`;
-        item.style.top = `${top}%`;
-        item.style.transform = `rotate(${rotate}deg)`;
-        item.style.zIndex = Math.floor(Math.random() * 10) + 5;
+        if (finalLayout) {
+          // توزيع نهائي مرتب كألبوم
+          item.style.position = 'static';
+          item.style.width = 'auto';
+          item.style.margin = '8px';
+        } else {
+          const left = 10 + Math.random() * 78;
+          const top = 8 + Math.random() * 68;
+          const rotate = Math.random() * 12 - 6;
+          item.style.left = `${left}%`;
+          item.style.top = `${top}%`;
+          item.style.transform = `rotate(${rotate}deg)`;
+        }
 
         item.innerHTML = `
           <div class="media-container">
@@ -157,15 +165,6 @@
           </div>
           <div class="delete-btn" onclick="deletePhoto(${index}); event.stopImmediatePropagation();">×</div>
         `;
-
-        // حذف بالضغط المطول (يعمل بشكل أفضل على أندرويد)
-        let timer;
-        item.addEventListener('touchstart', () => {
-          timer = setTimeout(() => {
-            if (confirm('حذف هذه الصورة؟')) deletePhoto(index);
-          }, 700);
-        });
-        item.addEventListener('touchend', () => clearTimeout(timer));
 
         gallery.appendChild(item);
       });
@@ -177,14 +176,14 @@
       url = extractImageUrl(url);
       mediaList.unshift(url);
       localStorage.setItem('hauranGallery', JSON.stringify(mediaList));
-      renderGallery();
+      renderGallery(true);
       input.value = '';
     }
 
     function deletePhoto(index) {
       mediaList.splice(index, 1);
       localStorage.setItem('hauranGallery', JSON.stringify(mediaList));
-      renderGallery();
+      renderGallery(true);
     }
 
     input.addEventListener('keypress', e => { if (e.key === 'Enter') addMedia(); });
@@ -194,32 +193,39 @@
       document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.75)), url('${randomBg}')`;
     }
 
-    // حركة جديدة: تبعثر + ريح + وميض ثم تصطف مرتبة (3 ثوانٍ)
+    // الحركة الجديدة المطلوبة (3 ثوانٍ)
     function animateOnRefresh() {
+      windSound.currentTime = 0;
+      windSound.play().catch(() => {});
+
       const items = Array.from(gallery.children);
-      
-      // مرحلة 1: تبعثر مع ريح (3 ثوانٍ)
+
+      // 1. تقترب من الوسط العلوي
       items.forEach(item => {
-        item.style.transition = 'all 3s cubic-bezier(0.4, 0, 0.2, 1)';
-        const scatterX = (Math.random() - 0.5) * 900;
-        const scatterY = (Math.random() - 0.5) * 500;
-        item.style.transform = `translate(${scatterX}px, ${scatterY}px) rotate(${Math.random()*45 - 22}deg)`;
+        item.style.transition = 'all 1s cubic-bezier(0.4, 0, 0.2, 1)';
+        item.style.transform = `translateY(-120px) scale(0.7)`;
       });
 
-      // مرحلة 2: بعد 3 ثوانٍ → تصطف مرتبة + وميض
+      // 2. بعد ثانية → تتبعثر للخارج
       setTimeout(() => {
-        renderGallery();
-        // وميض بسيط
-        gallery.style.transition = 'opacity 0.3s';
-        gallery.style.opacity = '0.3';
-        setTimeout(() => { gallery.style.opacity = '1'; }, 150);
+        items.forEach(item => {
+          item.style.transition = 'all 1.2s cubic-bezier(0.68, -0.55, 0.27, 1.55)';
+          const scatterX = (Math.random() - 0.5) * 900;
+          const scatterY = (Math.random() - 0.5) * 500;
+          item.style.transform = `translate(${scatterX}px, ${scatterY}px) rotate(${Math.random()*45 - 22}deg)`;
+        });
+      }, 1000);
+
+      // 3. بعد 3 ثوانٍ كاملة → تصطف مرتبة كألبوم
+      setTimeout(() => {
+        renderGallery(true);   // توزيع نهائي مرتب
       }, 3000);
     }
 
     window.onload = () => {
       changeBackground();
-      renderGallery();
-      setTimeout(animateOnRefresh, 600);
+      renderGallery(true);           // تبدأ مرتبة
+      setTimeout(animateOnRefresh, 400);
     };
   </script>
 </body>
