@@ -22,10 +22,10 @@
 
     .frame {
       background: #f5e8c7;
-      padding: 10px 8px 28px;
+      padding: 10px 8px 32px;
       box-shadow: 0 15px 35px rgba(0,0,0,0.75), inset 0 0 25px rgba(139,69,19,0.4), 0 0 0 8px #3c2f1f;
       border-radius: 8px;
-      transition: all 1.2s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+      transition: all 1.1s cubic-bezier(0.68, -0.55, 0.27, 1.55);
       position: absolute;
       width: 200px;
       cursor: pointer;
@@ -56,23 +56,40 @@
       box-shadow: 0 15px 30px rgba(0,0,0,0.5);
       width: 340px;
     }
+
+    .delete-btn {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: #ef4444;
+      color: white;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+      z-index: 20;
+    }
   </style>
 </head>
 <body>
 
   <div class="max-w-7xl mx-auto py-8 px-8 relative">
 
-    <!-- المعرض (في الأعلى) -->
+    <!-- المعرض -->
     <div id="gallery" class="gallery-container mx-auto"></div>
 
-    <!-- العنوان ونافذة الإضافة (تحت الصور) -->
+    <!-- العنوان ونافذة الإضافة تحت الصور -->
     <div class="text-center mt-12">
       <h1 class="title text-5xl md:text-6xl font-bold">HAURAN</h1>
       <h2 class="arabic-title text-3xl md:text-4xl mt-1">صدى بصري</h2>
       <p class="text-amber-200 text-sm mt-4">Visual Echoes • معرض الإطارات القديمة</p>
     </div>
 
-    <!-- مربع الإضافة -->
     <div class="flex justify-center mt-8">
       <div class="input-box rounded-3xl p-5">
         <p class="text-gray-800 text-xs font-medium mb-3 text-center">Paste X link or image link</p>
@@ -104,34 +121,53 @@
     let mediaList = JSON.parse(localStorage.getItem('hauranGallery')) || [];
 
     function extractImageUrl(url) {
+      url = url.trim();
       if (url.includes('pbs.twimg.com/media/')) return url;
-      if (url.includes('x.com') || url.includes('twitter.com')) {
-        const statusMatch = url.match(/status\/(\d+)/);
-        const photoMatch = url.match(/\/photo\/(\d+)/);
-        if (statusMatch && photoMatch) {
-          return `https://pbs.twimg.com/media/${statusMatch[1]}_${photoMatch[1]}.jpg`;
-        }
+
+      // استخراج رقم التغريدة ورقم الصورة
+      const statusMatch = url.match(/status\/(\d+)/);
+      const photoMatch = url.match(/photo\/(\d+)/);
+
+      if (statusMatch) {
+        const statusId = statusMatch[1];
+        const photoNum = photoMatch ? photoMatch[1] : "1";
+        return `https://pbs.twimg.com/media/${statusId}_${photoNum}.jpg`;
       }
       return url;
     }
 
-    function renderAndAnimate() {
+    function renderGallery() {
       gallery.innerHTML = '';
-      mediaList.forEach((url) => {
+      mediaList.forEach((url, index) => {
         const cleanUrl = extractImageUrl(url);
         const item = document.createElement('div');
         item.className = 'frame';
+        item.dataset.index = index;
 
-        // توزيع مرتب مع تراكب خفيف
-        const left = 8 + Math.random() * 82;
+        const left = 8 + Math.random() * 80;
         const top = 5 + Math.random() * 75;
-        const rotate = Math.random() * 10 - 5;
+        const rotate = Math.random() * 12 - 6;
+
         item.style.left = `${left}%`;
         item.style.top = `${top}%`;
         item.style.transform = `rotate(${rotate}deg)`;
-        item.style.zIndex = Math.floor(Math.random() * 8) + 2;
+        item.style.zIndex = Math.floor(Math.random() * 10) + 5;
 
-        item.innerHTML = `<div class="media-container"><img src="${cleanUrl}" onerror="this.src='https://picsum.photos/id/1015/600/600'"></div>`;
+        item.innerHTML = `
+          <div class="media-container">
+            <img src="${cleanUrl}" onerror="this.src='https://picsum.photos/id/1015/600/600'">
+          </div>
+          <div class="delete-btn" onclick="deletePhoto(${index}); event.stopImmediatePropagation();">×</div>
+        `;
+
+        // حذف بالضغط المطول على الموبايل
+        item.addEventListener('touchstart', function(e) {
+          let timer = setTimeout(() => {
+            if (confirm('حذف هذه الصورة؟')) deletePhoto(index);
+          }, 650);
+          this.addEventListener('touchend', () => clearTimeout(timer), {once: true});
+        });
+
         gallery.appendChild(item);
       });
     }
@@ -139,12 +175,17 @@
     function addMedia() {
       let url = input.value.trim();
       if (!url) return;
-
       url = extractImageUrl(url);
       mediaList.unshift(url);
       localStorage.setItem('hauranGallery', JSON.stringify(mediaList));
-      renderAndAnimate();
+      renderGallery();
       input.value = '';
+    }
+
+    function deletePhoto(index) {
+      mediaList.splice(index, 1);
+      localStorage.setItem('hauranGallery', JSON.stringify(mediaList));
+      renderGallery();
     }
 
     input.addEventListener('keypress', e => { if (e.key === 'Enter') addMedia(); });
@@ -154,25 +195,9 @@
       document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.75)), url('${randomBg}')`;
     }
 
-    // حركة مرتبة عند التحديث
-    function scatterAndRegroup() {
-      const items = Array.from(gallery.children);
-      items.forEach(item => {
-        item.style.transition = 'all 1.6s cubic-bezier(0.4, 0, 0.2, 1)';
-        const scatterX = (Math.random() - 0.5) * 600;
-        const scatterY = (Math.random() - 0.5) * 400;
-        item.style.transform = `translate(${scatterX}px, ${scatterY}px) rotate(${Math.random()*25 - 12}deg)`;
-      });
-
-      setTimeout(() => {
-        renderAndAnimate();
-      }, 1600);
-    }
-
     window.onload = () => {
       changeBackground();
-      renderAndAnimate();
-      setTimeout(scatterAndRegroup, 600);
+      renderGallery();
     };
   </script>
 </body>
