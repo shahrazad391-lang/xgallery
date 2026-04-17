@@ -70,7 +70,6 @@
       align-items: center;
       justify-content: center;
       font-size: 16px;
-      font-weight: bold;
       box-shadow: 0 3px 10px rgba(0,0,0,0.4);
       z-index: 20;
     }
@@ -124,10 +123,9 @@
       url = url.trim();
       if (url.includes('pbs.twimg.com/media/')) return url;
 
-      // استخراج رقم التغريدة ورقم الصورة
       const statusMatch = url.match(/status\/(\d+)/);
       const photoMatch = url.match(/photo\/(\d+)/);
-
+      
       if (statusMatch) {
         const statusId = statusMatch[1];
         const photoNum = photoMatch ? photoMatch[1] : "1";
@@ -144,8 +142,8 @@
         item.className = 'frame';
         item.dataset.index = index;
 
-        const left = 8 + Math.random() * 80;
-        const top = 5 + Math.random() * 75;
+        const left = 10 + Math.random() * 78;
+        const top = 8 + Math.random() * 68;
         const rotate = Math.random() * 12 - 6;
 
         item.style.left = `${left}%`;
@@ -160,13 +158,14 @@
           <div class="delete-btn" onclick="deletePhoto(${index}); event.stopImmediatePropagation();">×</div>
         `;
 
-        // حذف بالضغط المطول على الموبايل
-        item.addEventListener('touchstart', function(e) {
-          let timer = setTimeout(() => {
+        // حذف بالضغط المطول (يعمل بشكل أفضل على أندرويد)
+        let timer;
+        item.addEventListener('touchstart', () => {
+          timer = setTimeout(() => {
             if (confirm('حذف هذه الصورة؟')) deletePhoto(index);
-          }, 650);
-          this.addEventListener('touchend', () => clearTimeout(timer), {once: true});
+          }, 700);
         });
+        item.addEventListener('touchend', () => clearTimeout(timer));
 
         gallery.appendChild(item);
       });
@@ -195,9 +194,32 @@
       document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.75)), url('${randomBg}')`;
     }
 
+    // حركة جديدة: تبعثر + ريح + وميض ثم تصطف مرتبة (3 ثوانٍ)
+    function animateOnRefresh() {
+      const items = Array.from(gallery.children);
+      
+      // مرحلة 1: تبعثر مع ريح (3 ثوانٍ)
+      items.forEach(item => {
+        item.style.transition = 'all 3s cubic-bezier(0.4, 0, 0.2, 1)';
+        const scatterX = (Math.random() - 0.5) * 900;
+        const scatterY = (Math.random() - 0.5) * 500;
+        item.style.transform = `translate(${scatterX}px, ${scatterY}px) rotate(${Math.random()*45 - 22}deg)`;
+      });
+
+      // مرحلة 2: بعد 3 ثوانٍ → تصطف مرتبة + وميض
+      setTimeout(() => {
+        renderGallery();
+        // وميض بسيط
+        gallery.style.transition = 'opacity 0.3s';
+        gallery.style.opacity = '0.3';
+        setTimeout(() => { gallery.style.opacity = '1'; }, 150);
+      }, 3000);
+    }
+
     window.onload = () => {
       changeBackground();
       renderGallery();
+      setTimeout(animateOnRefresh, 600);
     };
   </script>
 </body>
